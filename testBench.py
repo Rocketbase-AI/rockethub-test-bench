@@ -7,10 +7,14 @@ import torch.nn as nn
 import argparse
 from tqdm import tqdm
 
-def average_time_inference(model: nn.Module, input: Image, num_iterations: int = 10):
+import os, platform, subprocess
+
+# torch.cuda.benchmark=True
+
+def average_time_inference(model: nn.Module, input: Image, num_iterations: int = 10, device: str = 'cpu') -> int:
     with torch.no_grad():
         # Pre-process the image
-        img_tensor = model.preprocess(img)
+        img_tensor = model.preprocess(img).to(device)
         # Warmup the model
         out = model(img_tensor)
 
@@ -22,12 +26,42 @@ def average_time_inference(model: nn.Module, input: Image, num_iterations: int =
             start_inference = time.time()
             
             out = model(img_tensor)
-            
+            # torch.cuda.synchronize() #To synchronise GPU with CPU
+
             arr_time[i] = time.time() - start_inference
             pbar.update(1)
         pbar.close()
     
     return np.mean(arr_time)
+
+def get_cpu_name() -> str:
+    if platform.system() == "Linux":
+        command = ["cat", "/proc/cpuinfo"]
+        all_info = str(subprocess.Popen(command, stdout=subprocess.PIPE ).communicate()[0]).strip()
+        start_str = all_info.find('model name') + len('model_name') + 4
+        end_str = start_str + all_info[start_str:].find('\\n')
+        model_name = all_info[start_str:end_str]
+        return model_name
+    else:
+        print('The cpu name can only be retrieved on Linux.')
+        return 'Unknown'
+
+def display_test_results(test_results: dict, width: int = 55):
+    # Compute potential longuest string
+    max_key_width = max([len(str(v[0])) for v in test_results])
+    # max_item_width = max([len(str(v[1])) for v in test_results])
+    # print(max_key_width, max_item_width)
+
+    # Print the results
+    print((' TEST RESULTS ').center(width, '-'))
+    for v in test_results:
+        line = '| ' + v[0].ljust(max_key_width) + ' : ' + v[1].ljust(width)
+        print(line[:width-2], '|')
+    print(('').center(width, '-'))
+
+def convert_results2dict(test_results: dict):
+    return {v[0]:v[1] for v in test_results}
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Test the inference speed of a Rocket.")
@@ -38,23 +72,36 @@ if __name__ == "__main__":
     parser.add_argument('--unit', type=str, choices=['sec', 'FPS'], default='FPS', help="Unit in which to display the speed of the Rocket.")
     opt = parser.parse_args()
 
+    # Initiate the dict to gather all the test results
+    test_results = []
+
+    # Load the image
     img = Image.open(opt.image)
 
+    # Load the model
     model = Rocket.land(opt.rocket).to(opt.device).eval()
-
-    # Starting the Testing
-    out = average_time_inference(model, img, num_iterations=opt.iterations)
-    
-    # Get speed in the right format
-    out = round(out, 3) if opt.unit == 'sec' else round(1/out, 3)
 
     # Get the number of parameters
     num_parameters = sum(p.numel() for p in model.parameters() if p.requires_grad)
 
-    print('------ TEST RESULTS ------')
-    print('| Rocket: ' + str(opt.rocket).ljust(14) + ' |') 
-    print('| Device: ' + str(opt.device).ljust(14) + ' |')
-    print('| #Param: ' + ("{:,}".format(num_parameters)).ljust(14) + ' |')
-    print('| Image:  ' + str(opt.image).ljust(14) + ' |')
-    print('| Speed:  ' + (str(out) + ' ' + opt.unit).ljust(14) + ' |')
-    print('--------------------------')
+    test_results.append(['Rocket', opt.rocket])
+    test_results.append(['#Param', "{:,}".format(num_parameters)])
+    test_results.append(['Device', opt.device])
+    test_results.append(['CPU', get_cpu_name()])
+    if opt.device == 'cuda':
+        test_results.append(['GPU', torch.cuda.get_device_name(0)])
+
+    test_results.append(['Image', opt.image])
+
+    # Starting the Testing
+    out = average_time_inference(model, img, num_iterations=opt.iterations, device=opt.device)
+    
+    # Get speed in the right format
+    out = round(out, 3) if opt.unit == 'sec' else round(1/out, 3)
+
+    test_results.append(['Speed', str(out) + ' ' + opt.unit])
+
+    display_test_results(test_results)
+
+    # Convert the test results to dict for .jsom
+    # print(convert_results2dict(test_results))
