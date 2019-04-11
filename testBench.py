@@ -122,7 +122,8 @@ if __name__ == "__main__":
     
     if platform.system() == "Linux":
         test_results.append(['CPU', get_cpu_name()])
-        test_results.append(['CPU Usage', sizeof_fmt(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)]) 
+        # Doesn't seem to provide the metrics we want
+        # test_results.append(['CPU Usage', sizeof_fmt(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)]) 
 
     if opt.device == 'cuda':
         test_results.append(['GPU', torch.cuda.get_device_name(0)])
