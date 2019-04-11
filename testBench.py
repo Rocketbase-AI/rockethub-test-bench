@@ -6,11 +6,12 @@ import torch
 import torch.nn as nn
 import argparse
 from tqdm import tqdm
+import resource
 
 import os, platform, subprocess
 
 def average_time_inference(model: nn.Module, input: Image, num_iterations: int = 10, device: str = 'cpu') -> int:
-    """ Compute the average time for the inference of the model.
+    """Compute the average time for the inference of the model.
 
     """
     with torch.no_grad():
@@ -28,14 +29,25 @@ def average_time_inference(model: nn.Module, input: Image, num_iterations: int =
             
             out = model(img_tensor)
 
-            if device == 'cuda':
-                torch.cuda.synchronize() #To synchronise GPU with CPU
+            if device == 'cuda' : torch.cuda.synchronize() #To synchronise GPU with CPU
 
             arr_time[i] = time.time() - start_inference
+            
             pbar.update(1)
         pbar.close()
     
     return np.mean(arr_time)
+
+def sizeof_fmt(num, suffix='B'):
+    """Convert bit size to a human readable format
+    
+    Source: https://stackoverflow.com/a/1094933/1568937
+    """
+    for unit in ['','Ki','Mi','Gi','Ti','Pi','Ei','Zi']:
+        if abs(num) < 1024.0:
+            return "%3.1f%s%s" % (num, unit, suffix)
+        num /= 1024.0
+    return "%.1f%s%s" % (num, 'Yi', suffix)
 
 def get_cpu_name() -> str:
     """ Get the CPU name of the machine where the model is run.
@@ -103,15 +115,22 @@ if __name__ == "__main__":
     test_results.append(['Rocket', opt.rocket])
     test_results.append(['#Param', "{:,}".format(num_parameters)])
     test_results.append(['Device', opt.device])
-    test_results.append(['CPU', get_cpu_name()])
-    if opt.device == 'cuda':
-        test_results.append(['GPU', torch.cuda.get_device_name(0)])
-
-    test_results.append(['Image', opt.image])
+    
 
     # Starting the Testing
     out = average_time_inference(model, img, num_iterations=opt.iterations, device=opt.device)
     
+    if platform.system() == "Linux":
+        test_results.append(['CPU', get_cpu_name()])
+        test_results.append(['CPU Usage', sizeof_fmt(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)]) 
+
+    if opt.device == 'cuda':
+        test_results.append(['GPU', torch.cuda.get_device_name(0)])
+        test_results.append(['GPU Usage', sizeof_fmt(torch.cuda.max_memory_allocated(0))])
+
+    print(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
+
+    test_results.append(['Image', opt.image])
     # Get speed in the right format
     out = round(out, 3) if opt.unit == 'sec' else round(1/out, 3)
 
