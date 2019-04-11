@@ -34,8 +34,8 @@ if __name__ == "__main__":
     parser.add_argument('--rocket', type=str, help="Name of the Rocket to test.")
     parser.add_argument('--image', type=str, help="Path to the image to use for the test.")
     parser.add_argument('--iterations', type=int, default=10, help="Number of iterations in the testing loop.")
-    parser.add_argument('--device', type=str, choices=['cpu', 'cuda'], default='cpu', help="Device on with to use the model.")
-    parser.add_argument('--unit', type=str, choices=['sec', 'FPS'], default='FPS', help="Unit in which to measure the speed of the Rocket.")
+    parser.add_argument('--device', type=str, choices=['cpu', 'cuda'], default='cpu', help="Device on wich to use the model.")
+    parser.add_argument('--unit', type=str, choices=['sec', 'FPS'], default='FPS', help="Unit in which to display the speed of the Rocket.")
     opt = parser.parse_args()
 
     img = Image.open(opt.image)
