@@ -9,8 +9,6 @@ from tqdm import tqdm
 
 import os, platform, subprocess
 
-# torch.cuda.benchmark=True
-
 def average_time_inference(model: nn.Module, input: Image, num_iterations: int = 10, device: str = 'cpu') -> int:
     with torch.no_grad():
         # Pre-process the image
@@ -26,7 +24,9 @@ def average_time_inference(model: nn.Module, input: Image, num_iterations: int =
             start_inference = time.time()
             
             out = model(img_tensor)
-            # torch.cuda.synchronize() #To synchronise GPU with CPU
+
+            if device == 'cuda':
+                torch.cuda.synchronize() #To synchronise GPU with CPU
 
             arr_time[i] = time.time() - start_inference
             pbar.update(1)
@@ -77,6 +77,10 @@ if __name__ == "__main__":
 
     # Load the image
     img = Image.open(opt.image)
+
+    # Optimize for the GPU
+    if opt.device == 'cuda':
+        torch.cuda.benchmark=True
 
     # Load the model
     model = Rocket.land(opt.rocket).to(opt.device).eval()
