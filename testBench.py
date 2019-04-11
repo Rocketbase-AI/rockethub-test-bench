@@ -10,6 +10,9 @@ from tqdm import tqdm
 import os, platform, subprocess
 
 def average_time_inference(model: nn.Module, input: Image, num_iterations: int = 10, device: str = 'cpu') -> int:
+    """ Compute the average time for the inference of the model.
+
+    """
     with torch.no_grad():
         # Pre-process the image
         img_tensor = model.preprocess(img).to(device)
@@ -35,6 +38,9 @@ def average_time_inference(model: nn.Module, input: Image, num_iterations: int =
     return np.mean(arr_time)
 
 def get_cpu_name() -> str:
+    """ Get the CPU name of the machine where the model is run.
+
+    """
     if platform.system() == "Linux":
         command = ["cat", "/proc/cpuinfo"]
         all_info = str(subprocess.Popen(command, stdout=subprocess.PIPE ).communicate()[0]).strip()
@@ -47,6 +53,9 @@ def get_cpu_name() -> str:
         return 'Unknown'
 
 def display_test_results(test_results: dict, width: int = 55):
+    """ Display the results in the terminal
+
+    """
     # Compute potential longuest string
     max_key_width = max([len(str(v[0])) for v in test_results])
     # max_item_width = max([len(str(v[1])) for v in test_results])
@@ -60,6 +69,9 @@ def display_test_results(test_results: dict, width: int = 55):
     print(('').center(width, '-'))
 
 def convert_results2dict(test_results: dict):
+    """ Convert the list of results to a python Dictionary
+
+    """
     return {v[0]:v[1] for v in test_results}
 
 
