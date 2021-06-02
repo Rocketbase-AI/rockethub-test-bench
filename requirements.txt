@@ -33,6 +33,6 @@ torch==1.0.1.post2
 torchvision==0.2.2.post3
 tqdm==4.31.1
 traitlets==4.3.2
-urllib3==1.24.1
+urllib3==1.26.5
 wcwidth==0.1.7
 wheel==0.33.1
